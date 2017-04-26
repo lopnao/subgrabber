@@ -11,8 +11,9 @@
 #Check les soustitres
 import shutil, re , os, logging, requests, bs4, webbrowser, zipfile
 logging.basicConfig(level=logging.INFO, format=' %(asctime)s -%(levelname)s - %(message)s')
-def findserie(serieTitre, serieSaison, serieEpisode, serieSource, serieTeam, fullpathEpisode):
+def findserie(serieTitre, serieSaison, serieEpisode, serieSource, serieTeam, fullpathEpisode, fullpathEpisodeFolder):
     serie_titre_formatted = serieTitre.lower().replace(' ', '+')
+    serieSaison = serieSaison[1]
 
     logging.info("Searching for %s .." % (serieTitre)) # display text while downloading the search page
     res = requests.get('https://www.sous-titres.eu/search.html?q=' + serie_titre_formatted)
@@ -26,7 +27,7 @@ def findserie(serieTitre, serieSaison, serieEpisode, serieSource, serieTeam, ful
     linkElems = soup.select('.icone')
 
     for i in range(1):
-        serie_page = 'http://www.sous-titres.eu/' + linkElems[i].get('href')
+        serie_page = 'http://www.sous-titres.eu/' + linkElems[i].get('href') + '#' + 'saison-' +serieSaison
 
 
     logging.info("Searching for Saison %s Episode %s .." % (serieSaison, serieEpisode)) # display
@@ -38,8 +39,11 @@ def findserie(serieTitre, serieSaison, serieEpisode, serieSource, serieTeam, ful
     # Retrieve top search result links.
     soup = bs4.BeautifulSoup(res.text)
     href_formatted = "a[href*="+serieSaison+"x"+serieEpisode+"]"
+    href_formattedsaison = "a[href*=S"+serieSaison+"]"
     # Open a browser tab for each result.
     linkElems = soup.select(href_formatted)
+
+    logging.info('Recherche du fichier sous-titres sur le site...')
     for i in range(1):
         #webbrowser.open('http://www.sous-titres.eu/series/' + linkElems[i].get('href'))
         res = requests.get('http://www.sous-titres.eu/series/' + linkElems[i].get('href'))
@@ -95,7 +99,11 @@ def findserie(serieTitre, serieSaison, serieEpisode, serieSource, serieTeam, ful
                 liste_choix.append(bon_fichier4)
         if liste_choix != []:
             logging.info("Fichier sous titres trouve .. "+liste_choix[0])
-            zipTempFile2.extract(liste_choix[0], fullpathEpisode+'.fr.ass')
+            bon_fichier = liste_choix[0]
+            bon_fichier_ext = bon_fichier[len(bon_fichier)-3:len(bon_fichier)]
+            zipTempFile2.extract(bon_fichier, fullpathEpisodeFolder)
+            fullpathsubfileTemp = os.path.join(fullpathEpisodeFolder, bon_fichier)
+            shutil.move(fullpathsubfileTemp, fullpathEpisode+'.fr.'+bon_fichier_ext)
         else:
             logging.info("Pas de bon fichier trouve")
 
@@ -168,8 +176,18 @@ for episodeFolder in os.listdir(workingfolder):
             logging.info('Fichier sous-titres trouve ... %s' % (subfilename))
             achercher = 0
         elif extType == 'mkv' and achercher == 1:
-            logging.info('Fichier sous-titres non trouve  pour %s' % (subfilename))
-            fullpathEpisode = os.path.join(workingfolder, episodeFolder, subfilename)
+            logging.info('Fichier sous-titres non trouve  pour %s' % (subfile))
+            videoPattern = re.compile(r'(.*).s(\d\d)e(\d\d).(.*).(HDTV|WEBDL|DVDRIP|WEBRIP|WEB-DL)(.*)-(.*)-(.*).mkv', re.IGNORECASE)
+            mo_video = videoPattern.search(subfile)
+            if mo_video == None:
+                logging.info('Probleme pour reconnaitre Qaulity et Group')
+                continue
+            qualityPart = mo_video.group(5)
+            groupPart = mo_video.group(8)
+            fullpathEpisodeFolder = os.path.join(workingfolder, episodeFolder)
+            fullpathEpisode = os.path.join(workingfolder, episodeFolder, subfile)
             fullpathEpisode = fullpathEpisode[:len(fullpathEpisode)-4]
+            findserie(titrePart, saisonPart, episodePart, qualityPart, groupPart, fullpathEpisode, fullpathEpisodeFolder)
+            logging.info('Sous-Titres telecharges pour %s' % subfile)
 
             achercher = 1

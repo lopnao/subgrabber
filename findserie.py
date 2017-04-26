@@ -87,7 +87,9 @@ def findserie(serieTitre, serieSaison, serieEpisode, serieSource, serieTeam, ful
                 liste_choix.append(bon_fichier4)
         if liste_choix != []:
             logging.info("Fichier sous titres trouve .. "+liste_choix[0])
-            zipTempFile2.extract(liste_choix[0], fullpathEpisode+'.fr.ass')
+            bon_fichier = liste_choix[0]
+            bon_fichier_ext = bon_fichier[len(bon_fichier)-3:len(bon_fichier)]
+            zipTempFile2.extract(bon_fichier, fullpathEpisode+'.fr.'+bon_fichier_ext)
         else:
             logging.info("Pas de bon fichier trouve")
 
